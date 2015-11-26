@@ -12,6 +12,7 @@ HTTPS_PROXY_PORT=3128
 
 APT_FILE=/etc/apt/apt.conf
 ENVIRONMENT_FILE=/etc/environment
+DOCKER_CONF_FILE=/etc/systemd/system/docker.service.d/http-proxy.conf
 
 ###### Backup file
 function backup_file
@@ -20,6 +21,16 @@ function backup_file
 	then
 		sudo sed -i.bak '/http[s]::proxy/Id' "$1"
 	fi
+}
+
+function proxy_docker
+{
+	backup_file "$DOCKER_CONF_FILE"
+	sudo tee -a "$DOCKER_CONF_FILE" \
+<<EOF
+[Service]
+Environment="HTTP_PROXY=http://$USER:$PASS@$HTTP_PROXY_HOST:$HTTP_PROXY_PORT/"
+EOF
 }
 
 function proxy_gnome
@@ -31,7 +42,7 @@ function proxy_gnome
 	gsettings set org.gnome.system.proxy.http authentication-password "$PASS"
 	gsettings set org.gnome.system.proxy.https host "$HTTPS_PROXY_HOST"
 	gsettings set org.gnome.system.proxy.https port "$HTTPS_PROXY_PORT"
-	gsettings set org.gnome.system.proxy ignore-hosts "['localhost', '127.0.0.0/8', '*.sjk.emb', '::1', '10.5.2.*']"
+	gsettings set org.gnome.system.proxy ignore-hosts "['localhost', '127.0.0.0/8', '*.sjk.emb', '::1', '10.5.2.*', '*.gsw.com.br']"
 }
 
 function proxy_apt_file
@@ -67,6 +78,7 @@ function proxy_start
 	proxy_apt_file
 	proxy_environment_file
 	proxy_git
+	proxy_docker
 }
 
 ###### Proxy stop
@@ -79,8 +91,8 @@ function proxy_stop
 	sudo sed -i -e '/https_proxy/d' "$ENVIRONMENT_FILE"
 	unset http_proxy
 	unset https_proxy
-	npm config delete http-proxy
-	npm config delete https-proxy
+	#npm config delete http-proxy
+	#npm config delete https-proxy
 	export http_proxy=
 	export https_proxy=
 	http_proxy=
